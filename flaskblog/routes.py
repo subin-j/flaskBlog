@@ -1,6 +1,7 @@
 from flask import render_template, url_for, flash, redirect
-from flaskblog import app
+from flaskblog import app ,db, bcrypt
 from flaskblog.forms import RegistrationForm, LoginForm
+from flaskblog.models import User, Post
 
 #----------sample DB
 posts = [
@@ -18,7 +19,6 @@ posts = [
     }
 ]
 
-
 #----------------------routing
 
 @app.route("/")
@@ -35,8 +35,19 @@ def register():
     form = RegistrationForm()
     # validates then alerts
     if form.validate_on_submit():
-        flash(f"Account created for {form.username.data}!","success")
-        return redirect(url_for('home'))
+
+        #generate hased password and create user object 
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        user = User(username=form.username.data, email=form.email.data, password=hashed_password)
+        
+        #add newly created user data and commit to DB
+        db.session.add(user)
+        db.session.commit()
+
+        #flash messege if success, with bootstrap class 'success'
+        flash('Your account has been created!','success')
+        return redirect(url_for('login'))
+
     return render_template('register.html', title='Register', form = form)
 
 
@@ -46,11 +57,15 @@ def login():
     form = LoginForm()
     # validates then alerts & redirect
     if form.validate_on_submit():
-        if form.email.data == 'admin@blog.com' and form.password.data =='1234':
+        user = User.query.filter_by(email=form.email.data).first()
+        
+        if user and bcrypt.check_password_hash(user.password,form.password.data):
+            login_user(user,remember=form.remember.data)
+
             flash(f"Logged in successfully!","success")
             return redirect(url_for('home'))
 
         else: 
-                flash("Login Unsuccessful.","danger")
+            flash("Login Unsuccessful.","danger")
     return render_template('login.html', title='Login',form=form)
 
