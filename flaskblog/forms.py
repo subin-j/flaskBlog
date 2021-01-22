@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
-from wtforms.validators import DataRequired,Length, Email, EqualTo 
+from wtforms.validators import DataRequired,Length, Email, EqualTo, ValidationError 
 import email_validator
 
 
@@ -20,7 +20,17 @@ class RegistrationForm(FlaskForm):
         'Confirm Password',validators = [DataRequired(), EqualTo('password')]
     )
     submit = SubmitField('Sign Up')
-
+    #raise ValidationError when username and email have duplicates
+    def validate_username(self,username):
+        user = User.query.filter_by(username=username.data).first()
+        if user:
+            raise ValidationError('This username is taken. please choose a difference username.')
+            
+    def validate_email(self,email):
+        user = User.query.filter_by(email=email.data).first()
+        if user:
+            raise ValidationError('This email is taken. please choose a difference username.')
+            
 #------------------------Login
 class LoginForm(FlaskForm):
     email = StringField(
